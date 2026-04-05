@@ -49,6 +49,7 @@ mongoose
     console.log('✅ MongoDB connected');
     // Seed admin on first run
     await require('./utils/seedAdmin')();
+    
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => {

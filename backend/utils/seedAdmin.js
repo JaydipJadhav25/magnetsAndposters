@@ -3,6 +3,7 @@ const User = require('../models/User');
 module.exports = async function seedAdmin() {
   try {
     const exists = await User.findOne({ role: 'admin' });
+    console.log("exists : " , exists);
     if (exists) return;
 
     await User.create({

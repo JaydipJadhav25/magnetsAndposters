@@ -58,6 +58,7 @@ exports.verifyPayment = async (req, res, next) => {
 
     // ── Signature verification ────────────────────────────────────────────────
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+    console.log("boday : " , body);
     const expectedSig = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body)

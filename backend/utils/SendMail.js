@@ -18,6 +18,24 @@ export async function sendEmailToConfirmedOrder(
   const brandName = "magnetAndPosters"; // 🔥 change this
   const brandColor = "#ff4d6d"; // main brand color
 
+  const itemsHtml = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding:10px;border-bottom:1px solid #eee;">
+          ${item.name} (${item.variant || "Default"})
+        </td>
+        <td style="padding:10px;border-bottom:1px solid #eee;text-align:center;">
+          ${item.quantity}
+        </td>
+        <td style="padding:10px;border-bottom:1px solid #eee;text-align:right;">
+          ₹${item.price}
+        </td>
+      </tr>
+    `
+    )
+    .join("");
+
   const mailOptions = {
     from: "jaydipdjadhav@gmail.com",
     to,
