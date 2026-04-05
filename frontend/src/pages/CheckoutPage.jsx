@@ -115,6 +115,8 @@ export default function CheckoutPage() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               orderId,
+              name: data?.fullName || " ",
+              email: data?.email || "",
             })
             clearCart()
             navigate(`/order-success/${orderId}`)

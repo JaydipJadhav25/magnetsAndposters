@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const User  = require('../models/User');
 const Product = require('../models/Product');
+const { sendEmailToUserUpdateStatus } = require('../utils/SendMail');
 
 /**
  * GET /api/admin/dashboard
@@ -65,6 +66,15 @@ exports.updateOrderStatus = async (req, res, next) => {
     order.statusHistory.push({ status, note: note || `Status updated to ${status}` });
 
     await order.save();
+    
+  //    to,
+  // name = "User",
+  // orderId,
+  // orderStatus,
+
+   await sendEmailToUserUpdateStatus(order.guestEmail , order.shippingAddress.fullName , order._id , status);
+ 
+
     res.json({ success: true, order });
   } catch (err) { next(err); }
 };

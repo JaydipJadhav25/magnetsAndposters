@@ -1,6 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Order = require('../models/Order');
+const {  sendEmailToConfirmedOrder } = require('../utils/SendMail');
 
 const razorpay = new Razorpay({
   key_id:     process.env.RAZORPAY_KEY_ID,
@@ -53,7 +54,7 @@ exports.createRazorpayOrder = async (req, res, next) => {
  */
 exports.verifyPayment = async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId , name , email } = req.body;
 
     // ── Signature verification ────────────────────────────────────────────────
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
@@ -76,6 +77,17 @@ exports.verifyPayment = async (req, res, next) => {
     order.razorpaySignature  = razorpay_signature;
     order.statusHistory.push({ status: 'confirmed', note: 'Payment received via Razorpay' });
     await order.save();
+
+    //send to msg order place succesfully
+  //     to,
+  // name = "User",
+  // orderId = "12345",
+  // items = [],
+  // totalAmount = "0"
+    const response = await sendEmailToConfirmedOrder(email , name  , orderId , order.items , order.total);
+
+    console.log("response of send email : " , response);
+
 
     res.json({ success: true, message: 'Payment verified', orderNumber: order.orderNumber });
   } catch (err) { next(err); }
