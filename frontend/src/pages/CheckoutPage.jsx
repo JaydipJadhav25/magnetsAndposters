@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { formatPrice, getShipping } from '../utils/helpers'
 import api from '../utils/api'
+import { useForm } from 'react-hook-form'
 
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
@@ -23,18 +24,25 @@ export default function CheckoutPage() {
   const shipping = getShipping(subtotal)
   const total    = subtotal + shipping
 
-  const [form, setForm] = useState({
-    fullName: user?.name || '',
-    phone:    user?.phone || '',
-    email:    user?.email || '',
-    line1:    '',
-    line2:    '',
-    city:     '',
-    state:    '',
-    pincode:  '',
-  })
   const [loading, setLoading] = useState(false)
-  const [errors,  setErrors]  = useState({})
+
+  //  React Hook Form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm({
+    defaultValues: {
+      fullName: user?.name || '',
+      phone: user?.phone || '',
+      email: user?.email || '',
+      line1: '',
+      line2: '',
+      city: '',
+      state: '',
+      pincode: '',
+    }
+  })
 
   if (items.length === 0) {
     return (
@@ -45,119 +53,108 @@ export default function CheckoutPage() {
     )
   }
 
-  const validate = () => {
-    const e = {}
-    if (!form.fullName.trim()) e.fullName = 'Name is required'
-    if (!form.phone.trim() || !/^[6-9]\d{9}$/.test(form.phone)) e.phone = 'Valid 10-digit phone required'
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Valid email required'
-    if (!form.line1.trim()) e.line1 = 'Address is required'
-    if (!form.city.trim()) e.city = 'City is required'
-    if (!form.state) e.state = 'State is required'
-    if (!form.pincode.trim() || !/^\d{6}$/.test(form.pincode)) e.pincode = 'Valid 6-digit pincode required'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
-
-  const handleChange = (e) => {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
-    if (errors[e.target.name]) setErrors((er) => ({ ...er, [e.target.name]: '' }))
-  }
-
-  const handlePlaceOrder = async () => {
-    if (!validate()) return
+  const handlePlaceOrder = async (data) => {
     setLoading(true)
+    //  if (data) {
+    //   console.log("FORM DATA:", data)
+    //   return;
+    //  }
 
+      console.log("FORM DATA:", data)
+
+      
     try {
-      // 1. Create order in our backend
       const orderPayload = {
+  
         items: items.map((i) => ({
-          productId:   i.productId,
-          variant:     i.variant,
-          quantity:    i.quantity,
-          customImage: i.customImage || null,
+          productId: i.productId,
+          variant: i.variant,
+          quantity: i.quantity,
+          customImages: i.customImages || [],
         })),
+
         shippingAddress: {
-          fullName: form.fullName,
-          phone:    form.phone,
-          line1:    form.line1,
-          line2:    form.line2,
-          city:     form.city,
-          state:    form.state,
-          pincode:  form.pincode,
+          fullName: data.fullName,
+          phone: data.phone,
+          line1: data.line1,
+          line2: data.line2,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
         },
-        guestEmail: !user ? form.email : undefined,
+        guestEmail: !user ? data.email : undefined,
       }
 
       const { data: orderData } = await api.post('/orders', orderPayload)
       const orderId = orderData.order._id
 
-      // 2. Create Razorpay order
       const { data: rzpData } = await api.post('/payments/create-order', { orderId })
 
-      // 3. Open Razorpay checkout
-      const options = {
-        key:         rzpData.keyId,
-        amount:      rzpData.amount,
-        currency:    rzpData.currency,
-        name:        'magnetAndPosters',
+      if (!window.Razorpay) {
+        toast.error('Payment gateway not loaded')
+        setLoading(false)
+        return
+      }
+
+      const rzp = new window.Razorpay({
+        key: rzpData.keyId,
+        amount: rzpData.amount,
+        currency: rzpData.currency,
+        name: 'magnetAndPosters',
         description: 'Custom Magnets & Posters',
-        order_id:    rzpData.razorpayOrderId,
+        order_id: rzpData.razorpayOrderId,
         prefill: {
-          name:    form.fullName,
-          email:   form.email,
-          contact: form.phone,
+          name: data.fullName,
+          email: data.email,
+          contact: data.phone,
         },
-        theme: { color: '#b5661f' },
         handler: async (response) => {
           try {
-            // 4. Verify payment
             await api.post('/payments/verify', {
-              razorpay_order_id:   response.razorpay_order_id,
+              razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature:  response.razorpay_signature,
+              razorpay_signature: response.razorpay_signature,
               orderId,
             })
             clearCart()
             navigate(`/order-success/${orderId}`)
           } catch {
-            toast.error('Payment verification failed. Contact support.')
+            toast.error('Payment verification failed')
           }
         },
-        modal: {
-          ondismiss: () => {
-            setLoading(false)
-            toast('Payment cancelled. Your order is saved.')
-          },
-        },
-      }
-
-      const rzp = new window.Razorpay(options)
-      rzp.on('payment.failed', () => {
-        toast.error('Payment failed. Please try again.')
-        setLoading(false)
       })
+
       rzp.open()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.')
+      toast.error('Something went wrong')
       setLoading(false)
     }
   }
 
-  const Field = ({ name, label, type = 'text', required, as, children, half }) => (
+  //  UPDATED Field (RHF CONNECTED, UI SAME)
+  const Field = ({ name, label, type = 'text', required, as, children, half, validation }) => (
     <div className={half ? 'sm:col-span-1' : 'sm:col-span-2'}>
       <label className="block text-sm font-medium text-dark mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
+
       {as === 'select' ? (
-        <select name={name} value={form[name]} onChange={handleChange} className={`input-field ${errors[name] ? 'border-red-400' : ''}`}>
+        <select
+          {...register(name, validation)}
+          className={`input-field ${errors[name] ? 'border-red-400' : ''}`}
+        >
           <option value="">Select {label}</option>
           {children}
         </select>
       ) : (
-        <input type={type} name={name} value={form[name]} onChange={handleChange}
-          className={`input-field ${errors[name] ? 'border-red-400' : ''}`} />
+        <input
+          type={type}
+          {...register(name, validation)}
+          className={`input-field ${errors[name] ? 'border-red-400' : ''}`}
+        />
       )}
-      {errors[name] && <p className="text-red-500 text-xs mt-1">{errors[name]}</p>}
+
+      {errors[name] && <p className="text-red-500 text-xs mt-1">{errors[name].message}</p>}
     </div>
   )
 
@@ -169,34 +166,43 @@ export default function CheckoutPage() {
 
       <h1 className="section-title mb-8">Checkout</h1>
 
-      <div className="grid lg:grid-cols-3 gap-10">
-        {/* Address form */}
+    
+        
+        <form onSubmit={handleSubmit(handlePlaceOrder)} className="grid lg:grid-cols-3 gap-10">
+
+           {/* FORM */}
         <div className="lg:col-span-2">
           <div className="card p-6">
             <h2 className="font-display text-xl font-semibold text-dark mb-5">Shipping Address</h2>
+
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field name="fullName" label="Full Name" required half />
-              <Field name="phone"    label="Phone Number" required half />
-              <Field name="email"    label="Email Address" type="email" required />
-              <Field name="line1"    label="Address Line 1" required />
-              <Field name="line2"    label="Address Line 2 (optional)" />
-              <Field name="city"    label="City" required half />
-              <div className="sm:col-span-1">
-                <label className="block text-sm font-medium text-dark mb-1">State <span className="text-red-500">*</span></label>
-                <select name="state" value={form.state} onChange={handleChange}
-                  className={`input-field ${errors.state ? 'border-red-400' : ''}`}>
-                  <option value="">Select State</option>
-                  {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
-              </div>
-              <Field name="pincode" label="Pincode" required half />
+              <Field name="fullName" label="Full Name" required half validation={{ required: 'Name is required' }} />
+              <Field name="phone" label="Phone Number" required half validation={{
+                required: 'Phone required',
+                pattern: { value: /^[6-9]\d{9}$/, message: 'Invalid phone' }
+              }} />
+              <Field name="email" label="Email Address" type="email" required validation={{
+                required: 'Email required',
+                pattern: { value: /\S+@\S+\.\S+/, message: 'Invalid email' }
+              }} />
+              <Field name="line1" label="Address Line 1" required validation={{ required: 'Address required' }} />
+              <Field name="line2" label="Address Line 2 (optional)" />
+              <Field name="city" label="City" required half validation={{ required: 'City required' }} />
+
+              <Field name="state" label="State" as="select" required validation={{ required: 'State required' }}>
+                {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </Field>
+
+              <Field name="pincode" label="Pincode" required half validation={{
+                required: 'Pincode required',
+                pattern: { value: /^\d{6}$/, message: 'Invalid pincode' }
+              }} />
             </div>
           </div>
         </div>
 
-        {/* Order summary */}
-        <div className="lg:col-span-1">
+        {/* SUMMARY */}
+              <div className="lg:col-span-1">
           <div className="card p-6 sticky top-24">
             <h2 className="font-display text-xl font-semibold text-dark mb-4">Order Summary</h2>
 
@@ -214,7 +220,8 @@ export default function CheckoutPage() {
                     {item.variant && <p className="text-xs text-gray-400">Size: {item.variant}</p>}
                     <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
                   </div>
-                  <span className="text-sm font-semibold text-dark">{formatPrice(item.price * item.quantity)}</span>
+                  {/* <span className="text-sm font-semibold text-dark">{formatPrice(item.price * item.quantity)}</span> */}
+                  <span className="text-sm font-semibold text-dark">{formatPrice(item.price)}</span>
                 </li>
               ))}
             </ul>
@@ -233,7 +240,8 @@ export default function CheckoutPage() {
             </div>
 
             <button
-              onClick={handlePlaceOrder}
+              // onClick={handlePlaceOrder}
+              type="submit"
               disabled={loading}
               className="btn-primary w-full mt-6 text-base py-4 flex items-center justify-center gap-2"
             >
@@ -246,7 +254,10 @@ export default function CheckoutPage() {
             </p>
           </div>
         </div>
+
+        </form>
+       
       </div>
-    </div>
+    
   )
 }

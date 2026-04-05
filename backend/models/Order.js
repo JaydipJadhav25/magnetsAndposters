@@ -9,12 +9,14 @@ const orderItemSchema = new mongoose.Schema({
   price:        { type: Number, required: true },
 
   // Customer uploaded image (for photo magnets) — store public_id for original access
-  customImage: {
-    publicId:    String,
-    url:         String,
-    originalUrl: String,  // Full-res, used by admin for printing
-    fileName:    String,
-  },
+    customImages: [
+      {
+        publicId: String,
+        url: String,
+        originalUrl: String,
+        fileName: String,
+      }
+]
 });
 
 const orderSchema = new mongoose.Schema(

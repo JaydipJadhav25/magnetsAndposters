@@ -37,9 +37,10 @@ exports.createOrder = async (req, res, next) => {
         variant:      item.variant || '',
         quantity:     item.quantity,
         price,
-        customImage:  item.customImage || null,
+        customImages: item.customImages || (item.customImage ? [item.customImage] : [])
       });
     }
+    // customImage:  item.customImage || null,
 
     // Free shipping above ₹699
     const shipping = subtotal >= 699 ? 0 : 60;

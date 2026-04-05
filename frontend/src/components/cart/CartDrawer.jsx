@@ -6,6 +6,7 @@ import { formatPrice, FREE_SHIPPING_THRESHOLD, SHIPPING_COST, getShipping } from
 
 export default function CartDrawer() {
   const { items, subtotal, itemCount, isOpen, setIsOpen, removeItem, updateQty } = useCart()
+  console.log("all items : " , items);
   const navigate = useNavigate()
   const shipping  = getShipping(subtotal)
   const total     = subtotal + shipping
@@ -73,21 +74,22 @@ export default function CartDrawer() {
                     <div className="flex items-center justify-between mt-2">
                       {/* Qty control */}
                       <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
-                        <button
+                        {/* <button
                           onClick={() => item.quantity > 1 ? updateQty(index, item.quantity - 1) : removeItem(index)}
                           className="text-dark hover:text-brand-600 transition-colors"
                         >
                           <FiMinus size={12} />
-                        </button>
+                        </button> */}
                         <span className="text-sm font-medium w-5 text-center">{item.quantity}</span>
-                        <button
+                        {/* <button
                           onClick={() => updateQty(index, item.quantity + 1)}
                           className="text-dark hover:text-brand-600 transition-colors"
                         >
                           <FiPlus size={12} />
-                        </button>
+                        </button> */}
                       </div>
                       <span className="font-semibold text-sm text-dark">{formatPrice(item.price * item.quantity)}</span>
+                      {/* <span className="font-semibold text-sm text-dark">{formatPrice(item.price)}</span> */}
                     </div>
                   </div>
 
