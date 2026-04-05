@@ -378,7 +378,7 @@ curl -X POST http://localhost:5000/api/products \
 
 ## 📞 Support
 
-WhatsApp: +91 90259 26436  
+WhatsApp: +91 
 Email: hello.magnetandposters@gmail.com
 
 ---
