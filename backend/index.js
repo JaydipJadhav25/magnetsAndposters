@@ -29,6 +29,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/', (req, res) => {
+  return res.send("<h1>magnet&Posters</h1>");
+});
 
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────

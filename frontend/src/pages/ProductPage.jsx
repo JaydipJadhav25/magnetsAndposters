@@ -151,6 +151,14 @@ export default function ProductPage() {
   //   setTimeout(() => setAddingToCart(false), 800)
   // }
 
+
+// Convert base64 → File
+  const base64ToFile = async (base64) => {
+  const res = await fetch(base64);
+  const blob = await res.blob();
+  return new File([blob], "cropped.jpg", { type: "image/jpeg" });
+};
+
   const handleAddToCart = async () => {
     // if (product.requiresCustomImage) {
 
@@ -191,7 +199,16 @@ export default function ProductPage() {
           // formData.append("image", img.file);
 
           //now use crop file
-          formData.append("image", img.cropped);
+          // formData.append("image", img.cropped);
+          // console.log("croped image:" , img.cropped)img.cropped = base64 string (data:image/jpeg;base64,...)
+
+
+
+            const file = await base64ToFile(img.cropped); //  convert
+           console.log("file : " , file);
+            formData.append("image", file); //  real file
+
+
 
           const { data } = await api.post("/upload/customer-image", formData, {
             headers: { "Content-Type": "multipart/form-data" },
