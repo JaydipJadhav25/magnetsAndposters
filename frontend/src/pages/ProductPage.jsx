@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import api from "../utils/api";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../utils/helpers";
+import ImageCropper from "../components/ImageCropper";
 
 export default function ProductPage() {
   const fileInputRefs = useRef([]);
@@ -30,6 +31,8 @@ export default function ProductPage() {
   const [customImages, setCustomImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+
+  const [activeCropIndex, setActiveCropIndex] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -118,6 +121,8 @@ export default function ProductPage() {
       updated[index] = { file, preview };
       return updated;
     });
+
+    setActiveCropIndex(index); // open cropper
   };
 
   // const handleAddToCart = () => {
@@ -181,7 +186,12 @@ export default function ProductPage() {
         toast.loading("images is Uplading.....");
         for (let img of customImages) {
           const formData = new FormData();
-          formData.append("image", img.file);
+
+          //this is direct file
+          // formData.append("image", img.file);
+
+          //now use crop file
+          formData.append("image", img.cropped);
 
           const { data } = await api.post("/upload/customer-image", formData, {
             headers: { "Content-Type": "multipart/form-data" },
@@ -361,46 +371,13 @@ export default function ProductPage() {
                 HEIC accepted (max 50MB).
               </p>
 
-              {/* {customImage?.preview ? (
-                <div className="relative">
-                  <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100">
-                    <img src={customImage.preview} alt="Preview" className="w-full h-full object-contain" />
-                    {uploading && (
-                      <div className="absolute inset-0 bg-dark/50 flex items-center justify-center">
-                        <div className="w-8 h-8 border-3 border-cream border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-                    {customImage.uploaded && (
-                      <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-                        <FiCheck size={14} />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => { setCustomImage(null); fileInputRef.current.value = '' }}
-                    className="mt-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
-                  >
-                    <FiX size={12} /> Remove photo
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-brand-300 rounded-xl py-8 flex flex-col items-center gap-2 hover:border-brand-500 hover:bg-brand-100/50 transition-colors text-brand-600"
-                >
-                  <FiUpload size={24} />
-                  <span className="text-sm font-medium">Click to upload photo</span>
-                  <span className="text-xs text-gray-400">Max 50MB — original quality preserved</span>
-                </button>
-              )} */}
-
               {customImages.map((img, index) => (
                 <div key={index} className="mb-3">
-                  {img?.preview ? (
+                  {img?.cropped ? (
                     <div className="relative">
                       <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100">
                         <img
-                          src={img.preview}
+                          src={img.cropped || img.preview}
                           alt="Preview"
                           className="w-full h-full object-contain"
                         />
@@ -441,6 +418,29 @@ export default function ProductPage() {
                   />
                 </div>
               ))}
+
+              {activeCropIndex !== null && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+                  <div className="bg-white p-4 rounded-xl w-[90%] max-w-md">
+                    <ImageCropper
+                      image={customImages[activeCropIndex].preview}
+                      aspect={1}
+                      onComplete={(croppedImg) => {
+                        setCustomImages((prev) => {
+                          const updated = [...prev];
+                          updated[activeCropIndex] = {
+                            ...updated[activeCropIndex],
+                            cropped: croppedImg,
+                          };
+                          return updated;
+                        });
+
+                        setActiveCropIndex(null);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <input
                 ref={fileInputRef}
